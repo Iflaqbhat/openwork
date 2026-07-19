@@ -17,7 +17,7 @@ import {
 } from "../../app/lib/den-session-events";
 import { evalRelaunchDesktopApp } from "../../app/lib/desktop";
 import { Button } from "../../components/ui/button";
-import { t } from "../../i18n";
+import { currentLocale, subscribeLocale, t } from "../../i18n";
 import { useDenAuth } from "../domains/cloud/den-auth-provider";
 import { ForcedSigninPage } from "../domains/cloud/forced-signin-page";
 import { OrgOnboardingPage } from "../domains/cloud/org-onboarding-page";
@@ -308,6 +308,7 @@ function BrandThemeControlActions() {
 let appOpenedCaptured = false;
 
 export function AppRoot() {
+  useSyncExternalStore(subscribeLocale, currentLocale, currentLocale);
   useDesktopFontZoomBehavior();
 
   // Module-level dedupe keeps StrictMode double-mounts from double-counting.

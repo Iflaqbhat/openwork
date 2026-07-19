@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { isWebDeployment } from "@/app/lib/openwork-deployment";
 import { hydrateOpenworkServerSettingsFromEnv } from "@/app/lib/openwork-server";
 import { isDesktopRuntime } from "@/app/utils";
+import { refreshLocaleFromStorage } from "@/i18n";
 import { ConnectLinkProvider } from "@/react-app/domains/cloud/connect-link-provider";
 import { DenAuthProvider } from "@/react-app/domains/cloud/den-auth-provider";
 import { BrandThemeProvider } from "@/react-app/domains/cloud/brand-theme";
@@ -46,6 +47,37 @@ type AppProvidersProps = {
   children: ReactNode;
 };
 
+function LocaleStorageSync() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const refresh = () => {
+      refreshLocaleFromStorage();
+    };
+    refresh();
+
+    const timeouts = [0, 100, 500, 1500].map((delay) => window.setTimeout(refresh, delay));
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        refresh();
+      }
+    };
+
+    window.addEventListener("storage", refresh);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      for (const timeout of timeouts) {
+        window.clearTimeout(timeout);
+      }
+      window.removeEventListener("storage", refresh);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, []);
+
+  return null;
+}
+
 export function AppProviders({ children }: AppProvidersProps) {
   hydrateOpenworkServerSettingsFromEnv();
 
@@ -67,6 +99,7 @@ export function AppProviders({ children }: AppProvidersProps) {
       <ServerProvider defaultUrl={defaultUrl}>
         <ArchitectureMismatchGate>
           <DesktopRuntimeBoot />
+          <LocaleStorageSync />
           <DenAuthProvider>
             <ConnectLinkProvider>
               <DesktopConfigProvider>

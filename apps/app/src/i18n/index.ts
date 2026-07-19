@@ -77,6 +77,35 @@ export const isLanguage = (value: unknown): value is Language => {
 };
 
 let localeValue: Language = "en";
+const localeSubscribers = new Set<() => void>();
+
+function notifyLocaleSubscribers() {
+  for (const subscriber of localeSubscribers) {
+    subscriber();
+  }
+}
+
+function applyLocale(newLocale: Language): Language {
+  const changed = localeValue !== newLocale;
+  localeValue = newLocale;
+
+  if (typeof document !== "undefined") {
+    document.documentElement.setAttribute("lang", newLocale);
+  }
+
+  if (changed) {
+    notifyLocaleSubscribers();
+  }
+
+  return newLocale;
+}
+
+export function subscribeLocale(subscriber: () => void): () => void {
+  localeSubscribers.add(subscriber);
+  return () => {
+    localeSubscribers.delete(subscriber);
+  };
+}
 
 /**
  * Get current locale
@@ -95,11 +124,7 @@ export const setLocale = (newLocale: Language) => {
     newLocale = "en";
   }
 
-  localeValue = newLocale;
-
-  if (typeof document !== "undefined") {
-    document.documentElement.setAttribute("lang", newLocale);
-  }
+  applyLocale(newLocale);
 
   // Persist to localStorage
   if (typeof window !== "undefined") {
@@ -203,19 +228,28 @@ export const initLocale = (): Language => {
   try {
     const stored = window.localStorage.getItem(LANGUAGE_PREF_KEY);
     if (isLanguage(stored)) {
-      localeValue = stored;
-      if (typeof document !== "undefined") {
-        document.documentElement.setAttribute("lang", stored);
-      }
-      return stored;
+      return applyLocale(stored);
     }
   } catch (e) {
     console.warn("Failed to read language preference:", e);
   }
 
-  if (typeof document !== "undefined") {
-    document.documentElement.setAttribute("lang", "en");
+  return applyLocale("en");
+};
+
+export const refreshLocaleFromStorage = (): Language => {
+  if (typeof window === "undefined") {
+    return locale();
   }
 
-  return "en";
+  try {
+    const stored = window.localStorage.getItem(LANGUAGE_PREF_KEY);
+    if (isLanguage(stored)) {
+      return applyLocale(stored);
+    }
+  } catch (e) {
+    console.warn("Failed to refresh language preference:", e);
+  }
+
+  return locale();
 };
